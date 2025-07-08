@@ -5,11 +5,13 @@ struct PolynomialChaosBasis
     p::Int
     d::Int
     α::Vector{Vector{Int64}}
+end
 
-    function PolynomialChaosBasis(bases::Vector{<:AbstractOrthogonalBasis}, p::Int)
-        d = length(bases)
-        return new(bases, p, d, multivariate_indices(p, d))
-    end
+function PolynomialChaosBasis(bases::Vector{<:AbstractOrthogonalBasis}, p::Int, α::Vector{Vector{Int}}=total_degree_set(p, length(bases)))
+    @assert all(sum.(α) .<= p) "Multi-indices must have total degree at most p=$p"
+    @assert all(α[1] .== 0) "First multi-index must be the 0-vector"
+    d = length(bases)
+    return PolynomialChaosBasis(bases, p, d, α)
 end
 
 function evaluate(Ψ::PolynomialChaosBasis, x::AbstractVector{Float64})
@@ -59,30 +61,102 @@ function He(x::Real, n::Integer)
     return He
 end
 
-function multivariate_indices(p::Int, d::Int)
-    No = Int64(factorial(p + d) / factorial(p) / factorial(d))
+function total_degree_set(p::Int, d::Int)
+    No = binomial(p+d, d)
 
-    idx = vcat(zeros(Int64, 1, d), Matrix(I, d, d), zeros(Int64, No - d - 1, d))
+    idx = [zeros(Int, d) for _ in 1:No]
+    idx[2][1] = 1
+    cursum = 1
 
-    pᵢ = ones(Int64, d, No)
-
-    for k in 2:No
-        for i in 1:d
-            pᵢ[i, k] = sum(pᵢ[i:d, k - 1])
+    for ct in 3:No
+        idx[ct] .= idx[ct-1]
+        cursum += 1
+        idx[ct][1] += 1
+        while cursum > p
+            # Update multi-index
+            for i in 1:d
+                if idx[ct][i] > 0
+                    cursum -= idx[ct][i]
+                    idx[ct][i] = 0
+                    if i < d
+                        cursum += 1
+                        idx[ct][i+1] += 1
+                    end
+                    break
+                end
+            end
         end
     end
 
-    P = d + 1
-    for k in 2:p
-        L = P
-        for j in 1:d, m in (L - pᵢ[j, k] + 1):L
-            P += 1
-            idx[P, :] = idx[m, :]
-            idx[P, j] = idx[P, j] + 1
+    return idx
+end
+
+function hyperbolic_cross_set(p::Int, d::Int)
+    idx = [zeros(Int, d) for _ in 1:2]
+    idx[2][1] = 1
+    curprod = 2
+
+    while true
+        if idx[end][end] == p
+            break
+        end
+        push!(idx, copy(idx[end]))
+        curidx = idx[end]
+        curprod *= (curidx[1]+2) / (curidx[1]+1)
+        curidx[1] += 1
+        while curprod > (p+1)
+            # Update multi-index
+            for i in 1:d
+                if curidx[i] > 0
+                    curprod /= (curidx[i]+1)
+                    curidx[i] = 0
+                    if i < d
+                        curprod *= (curidx[i+1]+2) / (curidx[i+1]+1)
+                        curidx[i+1] += 1
+                    end
+                    break
+                end
+            end
         end
     end
 
-    return map(collect, eachrow(idx))
+    return idx
+end
+
+function q_norm_set(p::Int, d::Int, q::Real)
+    if q == 1
+        return total_degree_set(p, d)
+    end
+
+    idx = [zeros(Int, d) for _ in 1:2]
+    idx[2][1] = 1
+    curnormpowq = 1
+
+    while true
+        if idx[end][end] == p
+            break
+        end
+        push!(idx, copy(idx[end]))
+        curidx = idx[end]
+        curnormpowq += (curidx[1]+1)^q - (curidx[1])^q
+        curidx[1] += 1
+        while (curnormpowq - 1e-4) > (p^q + eps())
+            # Update multi-index
+            for i in 1:d
+                if curidx[i] > 0
+                    curnormpowq -= (curidx[i])^q
+                    curidx[i] = 0
+                    if i < d
+                        curnormpowq += (curidx[i+1]+1)^q - (curidx[i+1])^q
+                        curidx[i+1] += 1
+                    end
+                    break
+                end
+            end
+        end
+    end
+
+    return idx
 end
 
 function map_to_base(_::LegendreBasis, x::AbstractVector)

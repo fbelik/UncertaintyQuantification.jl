@@ -157,7 +157,7 @@ export evaluate!
 export gradient
 export gradient_in_standard_normal_space
 export mean
-export multivariate_indices
+export total_degree_set
 export periodogram
 export polynomialchaos
 export probability_of_failure
