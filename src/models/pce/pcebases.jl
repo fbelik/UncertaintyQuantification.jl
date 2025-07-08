@@ -15,7 +15,13 @@ function PolynomialChaosBasis(bases::Vector{<:AbstractOrthogonalBasis}, p::Int, 
 end
 
 function evaluate(Ψ::PolynomialChaosBasis, x::AbstractVector{Float64})
-    return [prod(evaluate.(Ψ.bases, x, α)) for α in Ψ.α]
+    res = ones(length(Ψ.α))
+    for (i,α) in enumerate(Ψ.α)
+        for (j,order) in enumerate(α)
+            res[i] *= evaluate(Ψ.bases[j], x[j], order)
+        end
+    end
+    return res
 end
 
 struct LegendreBasis <: AbstractOrthogonalBasis
