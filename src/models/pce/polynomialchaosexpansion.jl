@@ -27,7 +27,12 @@ function polynomialchaos(
     to_standard_normal_space!(random_inputs, samples)
     x = map_to_bases(Ψ, Matrix(samples[:, random_names]))
 
-    A = mapreduce(row -> evaluate(Ψ, vec(row)), hcat, eachrow(x))'
+    Np = length(Ψ.α)
+    n = ls.sim.n
+    A = Matrix{Float64}(undef, n, Np)
+    for i in 1:n
+        A[i,:] .= evaluate(Ψ, x[i,:])
+    end
     y = A \ samples[:, output]
 
     ϵ = samples[:, output] - A * y
