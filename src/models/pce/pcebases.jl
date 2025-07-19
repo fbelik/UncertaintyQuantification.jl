@@ -8,7 +8,7 @@ struct PolynomialChaosBasis
 end
 
 function PolynomialChaosBasis(bases::Vector{<:AbstractOrthogonalBasis}, p::Int, α::Vector{Vector{Int}}=total_degree_set(p, length(bases)))
-    @assert all(sum.(α) .<= p) "Multi-indices must have total degree at most p=$p"
+    @assert all(maximum.(α) .<= p) "Multi-indices must have maximum degree at most p=$p"
     @assert all(α[1] .== 0) "First multi-index must be the 0-vector"
     d = length(bases)
     return PolynomialChaosBasis(bases, p, d, α)
@@ -108,16 +108,16 @@ function hyperbolic_cross_set(p::Int, d::Int)
         end
         push!(idx, copy(idx[end]))
         curidx = idx[end]
-        curprod *= (curidx[1]+2) / (curidx[1]+1)
+        curprod = div(curprod, curidx[1]+1) * (curidx[1]+2)
         curidx[1] += 1
         while curprod > (p+1)
             # Update multi-index
             for i in 1:d
                 if curidx[i] > 0
-                    curprod /= (curidx[i]+1)
+                    curprod = div(curprod, curidx[i]+1)
                     curidx[i] = 0
                     if i < d
-                        curprod *= (curidx[i+1]+2) / (curidx[i+1]+1)
+                        curprod = div(curprod, curidx[i+1]+1) * (curidx[i+1]+2)
                         curidx[i+1] += 1
                     end
                     break
@@ -136,29 +136,27 @@ function q_norm_set(p::Int, d::Int, q::Real)
 
     idx = [zeros(Int, d) for _ in 1:2]
     idx[2][1] = 1
-    curnormpowq = 1
 
-    while true
-        if idx[end][end] == p
-            break
-        end
+    while true#for _ in 2:((p+1)^d)
         push!(idx, copy(idx[end]))
         curidx = idx[end]
-        curnormpowq += (curidx[1]+1)^q - (curidx[1])^q
         curidx[1] += 1
-        while (curnormpowq - 1e-4) > (p^q + eps())
+        curnorm = norm(curidx, q)
+        while curnorm > (p + 1e-12)
             # Update multi-index
             for i in 1:d
                 if curidx[i] > 0
-                    curnormpowq -= (curidx[i])^q
                     curidx[i] = 0
                     if i < d
-                        curnormpowq += (curidx[i+1]+1)^q - (curidx[i+1])^q
                         curidx[i+1] += 1
                     end
                     break
                 end
             end
+            curnorm = norm(curidx, q)
+        end
+        if all(curidx .== 0)
+            break
         end
     end
 
