@@ -159,6 +159,8 @@ export gradient
 export gradient_in_standard_normal_space
 export mean
 export total_degree_set
+export hyperbolic_cross_set
+export q_norm_set
 export periodogram
 export polynomialchaos
 export probability_of_failure
