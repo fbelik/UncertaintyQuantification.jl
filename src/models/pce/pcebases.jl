@@ -137,7 +137,7 @@ function q_norm_set(p::Int, d::Int, q::Real)
     idx = [zeros(Int, d) for _ in 1:2]
     idx[2][1] = 1
 
-    while true#for _ in 2:((p+1)^d)
+    while true
         push!(idx, copy(idx[end]))
         curidx = idx[end]
         curidx[1] += 1
